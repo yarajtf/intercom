@@ -7,22 +7,30 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.Media;
 
 namespace Domofon
 {
     public partial class Form1 : Form
     {
 
+
+        SoundPlayer Bip = new SoundPlayer(Domofon.Properties.Resources.pisk);
+        SoundPlayer Svyaz = new SoundPlayer(Domofon.Properties.Resources.svyaz);
+        SoundPlayer Open = new SoundPlayer(Domofon.Properties.Resources.open);
         public Form1()
         {
+            AllowTransparency = true;
             InitializeComponent();
             textBox1.Text = ".";
-
+            button1.BackColor = System.Drawing.Color.Transparent;
+            
 
         }
         bool vizov = false;
+        bool otvet=false;
         bool open = false;
-        bool green = true;
+        bool green= true;
         private void pictureBox1_Click(object sender, EventArgs e)
         {
 
@@ -100,81 +108,191 @@ namespace Domofon
             textBox1.Text = ".";
         }
 
-        private void button16_Click(object sender, EventArgs e) //Вызов
-        {
-
-            if (green)
-            {
-                if (textBox1.Text.StartsWith(".") && textBox1.Text.EndsWith(".")) { }
-                else
-                {
-                    timer3.Interval = 250;
-                    timer3.Start();
-                    vizov = true;
-                    timer1.Interval = 10000;
-                    timer1.Start();
-                }
-            }
-        }
-
         private void timer1_Tick(object sender, EventArgs e)
         {
 
-            vizov = false;
-            textBox1.Text = ".";
-            timer3.Stop();
-            pictureBox1.Visible = true;
-            timer1.Stop();
-        }
+            timer3.Stop(); // прекращаем моргание, значит не ответили
 
-        private void button14_Click(object sender, EventArgs e) // Открыть
+            pictureBox1.Visible = true;
+            timer1.Stop(); // прекращаем ожидание ответа
+
+            Bip.Stop();  // остановка звука вызова
+            textBox1.Text = ".";    // обнуляем табло
+
+            if(otvet==false && open==false)    // если ответа не было, то разблокируем кнопку
+            button16.Enabled = true;
+
+            vizov = false;  // вызова больше нет
+        }
+        private void timer2_Tick(object sender, EventArgs e)
         {
-            if (textBox1.Text.StartsWith(".") && textBox1.Text.EndsWith(".") || vizov == false) { }
-            else
+            pictureBox7.BackgroundImage = (Domofon.Properties.Resources.doorclose);
+            label1.Text = "Дверь закрыта";
+           
+            timer2.Stop();  // окончание времени открытой двери
+
+            button16.Enabled = true; // разблокируем кнопку вызова
+            open = false;   // дверь закрыта
+            Open.Stop();    // прекращаем звук открытой двери
+        }
+        private void timer3_Tick(object sender, EventArgs e) // моргание зеленого индикатора
+        {
+            if (pictureBox1.Image != Domofon.Properties.Resources.КруК)
             {
-                textBox1.Text = ".";
-                label1.Text = "Дверь открыта";
-                open = false;
-                vizov = false;
-                timer2.Interval = 10000;
-                timer2.Start();
+                if (pictureBox1.Visible == false)
+                    pictureBox1.Visible = true;
+                else pictureBox1.Visible = false;
             }
         }
 
-        private void timer2_Tick(object sender, EventArgs e)
+        private void timer4_Tick(object sender, EventArgs e) // ответили но проигнорили
         {
-            label1.Text = "Дверь закрыта";
-            timer2.Stop();
+            timer4.Stop();
+            if (otvet == true && open == false)
+                button16.Enabled = true;
         }
 
-        private void button13_Click(object sender, EventArgs e) // Связь
+        private void timer5_Tick(object sender, EventArgs e) // таймер на открытие с ключа
         {
-            timer3.Stop();
-            pictureBox1.Visible = true;
-            if (vizov != false)
-                open = true;
+            timer5.Stop();
+            Open.Stop();
+            vizov = false;
+            otvet = false;
+            open = false;
+            pictureBox4.Enabled = true;
+            pictureBox5.Enabled = true;
+            pictureBox7.BackgroundImage = (Domofon.Properties.Resources.doorclose);
+            label1.Text = "Дверь закрыта";
+            textBox1.Text = ".";
+            button16.Enabled = true;
         }
+
+        int flagsvyaz = 1;
+
         long flag = 0;
-        private void button15_Click(object sender, EventArgs e) // Блокировка
+
+        private void button16_Click(object sender, EventArgs e) //Вызов
         {
-            if (vizov != true)
+            {
+                if (textBox1.Text.StartsWith(".") && textBox1.Text.EndsWith(".") || green == false) { }
+                else
+                {
+                    timer3.Interval = 250;
+                    timer3.Start(); //моргание
+
+                    timer1.Interval = 10000; // таймер на вызов
+                    timer1.Start();
+
+                    Bip.PlayLooping(); // играет звук вызова
+                    vizov = true;
+                    button16.Enabled = false;
+                }
+            }
+        }
+        private void pictureBox4_Click(object sender, EventArgs e) // ответ
+        {
+            flagsvyaz = 1;
+            timer3.Stop(); // прекращается моргание
+
+            Bip.Stop();  // остановка звука
+
+            pictureBox1.Visible = true;
+
+            if (vizov == true && flagsvyaz == 1)
+            {
+                Svyaz.Play();
+                otvet = true;
+                flagsvyaz++;
+            }
+            if (otvet == false)
+            {
+                timer4.Interval = 10000;    // таймер на ответ, но неоткрытие
+                timer4.Start();
+            }
+
+        }
+
+        private void pictureBox5_Click(object sender, EventArgs e) // открыть
+        {
+            if (textBox1.Text.StartsWith(".") && textBox1.Text.EndsWith(".") || otvet == false) { }
+            else
+            {
+                pictureBox7.BackgroundImage = (Domofon.Properties.Resources.dooropen);
+                label1.Text = "Дверь открыта";
+                open = true;
+                textBox1.Text = ".";
+                vizov = false;
+                otvet = false;
+                timer2.Interval = 10000;    // таймер на открытую дверь
+                timer2.Start();
+                Open.PlayLooping(); // играет звук открытой двери
+                
+            }
+        }
+
+        private void pictureBox8_MouseUp(object sender, MouseEventArgs e) // открыть с ключа
+        {
+            isDown = false;
+            if (pictureBox8.Location.X > 696 && pictureBox8.Location.X < 756 && pictureBox8.Location.Y > 282 && pictureBox8.Location.Y < 344  && open == false)
+            {
+                pictureBox4.Enabled = false;
+                pictureBox5.Enabled = false;
+                Bip.Stop();
+                timer3.Stop();
+                button16.Enabled = false;
+                pictureBox7.BackgroundImage = (Domofon.Properties.Resources.dooropen);
+                label1.Text = "Дверь открыта";
+                open = true;
+                textBox1.Text = ".";
+                pictureBox1.Visible = true;
+                timer5.Interval = 10000;
+                timer5.Start();
+
+                Open.PlayLooping();
+            }
+            pictureBox8.Location = new Point(706, 388);
+        }
+
+        private void pictureBox6_Click(object sender, EventArgs e) // блокировка
+        {
+            if (vizov == false)
             {
                 flag++;
                 if (flag % 2 == 1)
                 {
-                    pictureBox1.Image = Domofon.Properties.Resources.КруК;
+                    pictureBox1.BackgroundImage = Domofon.Properties.Resources.КруК;
                     green = false;
                 }
-                else { pictureBox1.Image = Domofon.Properties.Resources.Кру; green = true; }
+                else { pictureBox1.BackgroundImage = Domofon.Properties.Resources.Кру; green = true; }
             }
         }
 
-        private void timer3_Tick(object sender, EventArgs e)
+        bool isDown;
+
+        private void pictureBox8_MouseDown(object sender, MouseEventArgs e)
+        {
+            isDown = true;
+        }
+
+        private void pictureBox8_MouseMove(object sender, MouseEventArgs e)
+        {
+            Control c = sender as Control;
+            if (isDown)
+            {
+                c.Location = this.PointToClient(Control.MousePosition);
+            }
+        }
+
+        private void panel1_Paint(object sender, PaintEventArgs e)
         {
 
-            if (pictureBox1.Visible == false)
-                pictureBox1.Visible = true;
-            else pictureBox1.Visible = false;
         }
+
+        private void pictureBox8_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        
     }
 }
